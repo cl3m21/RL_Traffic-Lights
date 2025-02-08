@@ -103,7 +103,7 @@ def process_emergency_vehicles(desired_phase_mapping, adjusted_tls, step):
                                   f"{new_duration} seconds")
                         else:
                             # Shorten the current phase to get to desired phase sooner
-                            traci.trafficlight.setPhaseDuration(tlsID, 1)
+                            traci.trafficlight.setPhaseDuration(tlsID, 0.1)
                             print(f"Shortened phase {current_phase} of {tlsID} to 1 second")
 
     # Reset traffic lights to normal operation if no emergency vehicle is approaching
