@@ -15,4 +15,16 @@ This is a wide range of tutorial codes for SUMO traci applications ranging from.
 
 <img src="https://github.com/user-attachments/assets/9d56c33b-5d64-4d70-b348-cf6593196945" width="600" alt="Thumbnail">
    
-## 4. To be continued
+## 4. SUMO Traffic Light: Signal Preemption/Priority for Emergency Vehicles 
+
+<img src="https://github.com/user-attachments/assets/000826b8-2a15-4a08-9abb-dcf43d275be1" width="600" alt="Thumbnail">
+
+## 5. SUMO Vehicle Type - Car Following Model and Lane Changing Model
+
+<img src="https://github.com/user-attachments/assets/0271d52b-8539-4486-a4d4-5f6c107d97b7" width="600" alt="Thumbnail">
+
+## 6 - 8.  Developing Two Reinforcement Learning Algorithms (Q-Learning and Deep Q-Learning)
+
+<img src="https://github.com/user-attachments/assets/c9610bf3-b286-44e2-8c2b-5a8db64ae0b7" width="600" alt="Thumbnail">
+
+## 9.  To Be Continued
