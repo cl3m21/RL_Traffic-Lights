@@ -27,4 +27,9 @@ This is a wide range of tutorial codes for SUMO traci applications ranging from.
 
 <img src="https://github.com/user-attachments/assets/c9610bf3-b286-44e2-8c2b-5a8db64ae0b7" width="600" alt="Thumbnail">
 
-## 9.  To Be Continued
+## 9.  Developing Mixed Traffic Environment for Autonomous Vehicles and Normal Cars
+
+<img src="https://github.com/user-attachments/assets/23601524-d49e-496a-af1e-e7c554bd6008" width="600" alt="Thumbnail">
+
+## 10.  To Be Continued
+
