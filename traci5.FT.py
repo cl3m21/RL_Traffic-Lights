@@ -4,6 +4,7 @@ import sys  # Module provides access to Python-specific system parameters and fu
 import random
 import numpy as np
 import matplotlib.pyplot as plt  # Visualization
+import datetime
 
 
 
@@ -109,7 +110,7 @@ def get_reward(state):  #2. Constraint 2
     return reward
 
 def get_state():  #3.& 4. Constraint 3 & 4
-    global q_EB_0, q_EB_1, q_EB_2, q_SB_0, q_SB_1, q_SB_2, current_phase
+    global q_EB_0, q_EB_1, q_EB_2, q_SB_0, q_SB_1, q_SB_2, wt_EB_0, wt_EB_1, wt_EB_2, wt_SB_0, wt_SB_1, wt_SB_2, current_phase
     
     # Detector IDs for Node1-2-EB
     detector_Node1_2_EB_0 = "Node1_2_EB_0"
@@ -132,11 +133,30 @@ def get_state():  #3.& 4. Constraint 3 & 4
     q_SB_0 = get_queue_length(detector_Node2_7_SB_0)
     q_SB_1 = get_queue_length(detector_Node2_7_SB_1)
     q_SB_2 = get_queue_length(detector_Node2_7_SB_2)
-    
+
+
+    #    Get queue lengths from each detector
+    q_EB_0 = get_queue_length(detector_Node1_2_EB_0)
+    q_EB_1 = get_queue_length(detector_Node1_2_EB_1)
+    q_EB_2 = get_queue_length(detector_Node1_2_EB_2)
+
+    q_SB_0 = get_queue_length(detector_Node2_7_SB_0)
+    q_SB_1 = get_queue_length(detector_Node2_7_SB_1)
+    q_SB_2 = get_queue_length(detector_Node2_7_SB_2)
+
+    #Get waiting from each lane time
+    wt_EB_0 = get_waiting_time(detector_Node1_2_EB_0)
+    wt_EB_1 = get_waiting_time(detector_Node1_2_EB_1)
+    wt_EB_2 = get_waiting_time(detector_Node1_2_EB_2)
+
+    wt_SB_0 = get_waiting_time(detector_Node2_7_SB_0)
+    wt_SB_1 = get_waiting_time(detector_Node2_7_SB_1)
+    wt_SB_2 = get_waiting_time(detector_Node2_7_SB_2)
+
     # Get current phase index
     current_phase = get_current_phase(traffic_light_id)
     
-    return (q_EB_0, q_EB_1, q_EB_2, q_SB_0, q_SB_1, q_SB_2, current_phase)
+    return (q_EB_0, q_EB_1, q_EB_2, q_SB_0, q_SB_1, q_SB_2, wt_EB_0, wt_EB_1, wt_EB_2, wt_SB_0, wt_SB_1, wt_SB_2, current_phase)
 
 def apply_action(action, tls_id="Node2"): #5. Constraint 5
     """
@@ -197,6 +217,10 @@ def get_action_from_policy(state): #7. Constraint 7
 def get_queue_length(detector_id): #8.Constraint 8
     return traci.lanearea.getLastStepVehicleNumber(detector_id)
 
+def get_waiting_time(detector_id): #8.Constraint 8
+    return traci.lane.getWaitingTime(detector_id)
+
+
 def get_current_phase(tls_id): #8.Constraint 8
     return traci.trafficlight.getPhase(tls_id)
 
@@ -208,8 +232,11 @@ def get_current_phase(tls_id): #8.Constraint 8
 step_history = []
 reward_history = []
 queue_history = []
-
+cumulative_waitingtime_history = []
+cumulative_waitingtime_total_history = []
+cumulative_waitingtime = 0.0
 cumulative_reward = 0.0
+cumulative_waitingtime_total = 0.0
 
 print("\n=== Starting Fully Online Continuous Learning ===")
 for step in range(TOTAL_STEPS):
@@ -224,18 +251,33 @@ for step in range(TOTAL_STEPS):
     new_state = get_state()
     reward = get_reward(new_state)
     cumulative_reward += reward
+
+    #Add sum of waiting time for each line for the step
+    cumulative_waitingtime = sum(new_state[-7:-1])
+    print("Cumulative waiting time " , cumulative_waitingtime , " " , new_state[-7:-1])
+    #Add sum of waiting time for each line total for the run
+    cumulative_waitingtime_total += sum(new_state[-7:-1])
+
+    #converting to time HH:MM:SS for display
+    cumulative_waitingtime_dateTime =  str(datetime.timedelta(seconds=cumulative_waitingtime))
     
     #update_Q_table(state, action, reward, new_state)
     
     # Print Q-values for the old_state right after update
     #updated_q_vals = Q_table[state]
 
+    if (step == 550):  # debug
+        print("step 200")
+
     # Record data every 100 steps
     if step % 100 == 0:
-        print(f"Step {step}, Current_State: {state}, New_State: {new_state}, Reward: {reward:.2f}, Cumulative Reward: {cumulative_reward:.2f}")
+        print(f"Step {step}, Current_State: {state}, New_State: {new_state}, Reward: {reward:.2f}, Cumulative Reward: {cumulative_reward:.2f}, Cumulative Waiting time Step: {cumulative_waitingtime_dateTime}")
         step_history.append(step)
         reward_history.append(cumulative_reward)
-        queue_history.append(sum(new_state[:-1]))  # sum of queue lengths
+        queue_history.append(sum(new_state[0:6]))  # sum of queue lengths
+        cumulative_waitingtime_history.append(cumulative_waitingtime) #sum  of lane  waiting time total to compare vs other model
+        cumulative_waitingtime_total_history.append(cumulative_waitingtime_total) #sum  of lane  waiting time total to compare vs other model
+
         print("Current Q-table:")
         for st, qvals in Q_table.items():
             print(f"  {st} -> {qvals}")
@@ -259,7 +301,7 @@ plt.figure(figsize=(10, 6))
 plt.plot(step_history, reward_history, marker='o', linestyle='-', label="Cumulative Reward")
 plt.xlabel("Simulation Step")
 plt.ylabel("Cumulative Reward")
-plt.title("Fixed Timing: Cumulative Reward over Steps")
+plt.title("Fixed Timing: Cumulative Reward over Steps in Fixed Time")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -269,7 +311,28 @@ plt.figure(figsize=(10, 6))
 plt.plot(step_history, queue_history, marker='o', linestyle='-', label="Total Queue Length")
 plt.xlabel("Simulation Step")
 plt.ylabel("Total Queue Length")
-plt.title("Fixed Timing: Queue Length over Steps")
+plt.title("Fixed Timing: Queue Length over Steps in Fixed Time")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# Plot Total Waiting Time over Simulation Steps
+plt.figure(figsize=(10, 6))
+plt.plot(step_history, cumulative_waitingtime_history, marker='o', linestyle='-', label="Total Waiting Time")
+plt.xlabel("Simulation Step")
+plt.ylabel("Total Waiting time at a certain step ")
+plt.title("RL Training: Total waiting time over Steps in Fixed Time")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Plot Total Waiting Time over Simulation Steps
+plt.figure(figsize=(10, 6))
+plt.plot(step_history, cumulative_waitingtime_total_history, marker='o', linestyle='-', label="Total Waiting Time")
+plt.xlabel("Simulation Step")
+plt.ylabel("Total Waiting time sum ")
+plt.title("RL Training: Total sum waiting time over Steps in Fixed Time")
 plt.legend()
 plt.grid(True)
 plt.show()

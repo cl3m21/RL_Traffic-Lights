@@ -4,6 +4,9 @@ import sys  # Module provides access to Python-specific system parameters and fu
 import random
 import numpy as np
 import matplotlib.pyplot as plt  # Visualization
+import datetime
+
+
 
 # Step 1.1: (Additional) Imports for Deep Q-Learning
 import tensorflow as tf
@@ -231,7 +234,7 @@ for step in range(TOTAL_STEPS):
     updated_q_vals = dqn_model.predict(to_array(state), verbose=0)[0]
 
     # Record data every 100 steps
-    if step % 1 == 0:
+    if step % 100 == 0:
         updated_q_vals = dqn_model.predict(to_array(state), verbose=0)[0]
         print(f"Step {step}, Current_State: {state}, Action: {action}, New_State: {new_state}, Reward: {reward:.2f}, Cumulative Reward: {cumulative_reward:.2f}, Q-values(current_state): {updated_q_vals}")
         step_history.append(step)
@@ -259,7 +262,7 @@ plt.figure(figsize=(10, 6))
 plt.plot(step_history, reward_history, marker='o', linestyle='-', label="Cumulative Reward")
 plt.xlabel("Simulation Step")
 plt.ylabel("Cumulative Reward")
-plt.title("RL Training (DQN): Cumulative Reward over Steps")
+plt.title("RL Training (DQN): Cumulative Reward over Steps in Deep Q Learning")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -269,7 +272,18 @@ plt.figure(figsize=(10, 6))
 plt.plot(step_history, queue_history, marker='o', linestyle='-', label="Total Queue Length")
 plt.xlabel("Simulation Step")
 plt.ylabel("Total Queue Length")
-plt.title("RL Training (DQN): Queue Length over Steps")
+plt.title("RL Training (DQN): Queue Length over Steps in Deep Q Learning")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# Plot Total Waiting Time over Simulation Steps
+plt.figure(figsize=(10, 6))
+plt.plot(step_history, cumulative_waitingtime_history, marker='o', linestyle='-', label="Total Waiting Time")
+plt.xlabel("Simulation Step")
+plt.ylabel("Total Waiting time ")
+plt.title("RL Training: Total waiting time over Steps in Deep Q Learning")
 plt.legend()
 plt.grid(True)
 plt.show()
