@@ -247,7 +247,7 @@ for step in range(TOTAL_STEPS):
     #Add sum of waiting time for each line total for the run
     cumulative_waitingtime_total += sum(new_state[-7:-1])
 
-    print("Cumulative waiting time ", cumulative_waitingtime, " ", new_state[-7:-1])
+    #print("Cumulative waiting time ", cumulative_waitingtime, " ", new_state[-7:-1])
     #converting to time HH:MM:SS for display
     cumulative_waitingtime_dateTime =  str(datetime.timedelta(seconds=cumulative_waitingtime))
 
@@ -315,6 +315,7 @@ plt.title("RL Training: Queue Length over Steps in Q Learning")
 plt.legend()
 plt.grid(True)
 plt.show()
+
 # Plot Total Waiting Time over Simulation Steps
 plt.figure(figsize=(10, 6))
 plt.plot(step_history, cumulative_waitingtime_history, marker='o', linestyle='-', label="Total Waiting Time")

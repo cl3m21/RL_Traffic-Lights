@@ -50,7 +50,8 @@ q_SB_2 = 0
 current_phase = 0
 
 # ---- Reinforcement Learning Hyperparameters ----
-TOTAL_STEPS = 10000    # The total number of simulation steps for continuous (online) training.
+TOTAL_STEPS = 10000
+# The total number of simulation steps for continuous (online) training.
 
 ALPHA = 0.1            # Learning rate (α) between[0, 1]    #If α = 1, you fully replace the old Q-value with the newly computed estimate.
                                                             #If α = 0, you ignore the new estimate and never update the Q-value.
@@ -135,11 +136,41 @@ def get_state():  #3&4. Constraint 3 & 4
     q_SB_0 = get_queue_length(detector_Node2_7_SB_0)
     q_SB_1 = get_queue_length(detector_Node2_7_SB_1)
     q_SB_2 = get_queue_length(detector_Node2_7_SB_2)
-    
+
     # Get current phase index
     current_phase = get_current_phase(traffic_light_id)
-    
+
     return (q_EB_0, q_EB_1, q_EB_2, q_SB_0, q_SB_1, q_SB_2, current_phase)
+
+
+def get_waitingTimeState():  #can't be in the get state like for Q Learning because of the model that expects 7 returns best to put appart that to mess with the other code
+    global  wt_EB_0, wt_EB_1, wt_EB_2, wt_SB_0, wt_SB_1, wt_SB_2
+
+    # Detector IDs for Node1-2-EB
+    detector_Node1_2_EB_0 = "Node1_2_EB_0"
+    detector_Node1_2_EB_1 = "Node1_2_EB_1"
+    detector_Node1_2_EB_2 = "Node1_2_EB_2"
+
+    # Detector IDs for Node2-7-SB
+    detector_Node2_7_SB_0 = "Node2_7_SB_0"
+    detector_Node2_7_SB_1 = "Node2_7_SB_1"
+    detector_Node2_7_SB_2 = "Node2_7_SB_2"
+
+    # Traffic light ID
+    traffic_light_id = "Node2"
+
+    #Get waiting from each lane time
+    wt_EB_0 = get_waiting_time(detector_Node1_2_EB_0)
+    wt_EB_1 = get_waiting_time(detector_Node1_2_EB_1)
+    wt_EB_2 = get_waiting_time(detector_Node1_2_EB_2)
+
+    wt_SB_0 = get_waiting_time(detector_Node2_7_SB_0)
+    wt_SB_1 = get_waiting_time(detector_Node2_7_SB_1)
+    wt_SB_2 = get_waiting_time(detector_Node2_7_SB_2)
+
+
+    return (wt_EB_0, wt_EB_1, wt_EB_2, wt_SB_0, wt_SB_1, wt_SB_2)
+
 
 def apply_action(action, tls_id="Node2"): #5. Constraint 5
     """
@@ -200,19 +231,25 @@ def get_action_from_policy(state): #7. Constraint 7
 def get_queue_length(detector_id): #8.Constraint 8
     return traci.lanearea.getLastStepVehicleNumber(detector_id)
 
+def get_waiting_time(detector_id): #8.Constraint 8
+    return traci.lane.getWaitingTime(detector_id)
+
+
 def get_current_phase(tls_id): #8.Constraint 8
     return traci.trafficlight.getPhase(tls_id)
 
 # -------------------------
 # Step 8: Fully Online Continuous Learning Loop
 # -------------------------
-
 # Lists to record data for plotting
 step_history = []
 reward_history = []
 queue_history = []
-
+cumulative_waitingtime_history = []
+cumulative_waitingtime_total_history = []
+cumulative_waitingtime = 0.0
 cumulative_reward = 0.0
+cumulative_waitingtime_total = 0.0
 
 print("\n=== Starting Fully Online Continuous Learning (DQN) ===")
 for step in range(TOTAL_STEPS):
@@ -225,9 +262,19 @@ for step in range(TOTAL_STEPS):
     traci.simulationStep()  # Advance simulation by one step
     
     new_state = get_state()
+    new_wt =  get_waitingTimeState()
     reward = get_reward(new_state)
     cumulative_reward += reward
-    
+
+    # Add sum of waiting time for each line for the step
+    cumulative_waitingtime = sum(new_wt)
+    # Add sum of waiting time for each line total for the run
+    cumulative_waitingtime_total += sum(new_wt)
+
+    #print("Cumulative waiting time ", cumulative_waitingtime, " ", new_wt)
+    # converting to time HH:MM:SS for display
+    cumulative_waitingtime_dateTime = str(datetime.timedelta(seconds=cumulative_waitingtime))
+
     update_Q_table(state, action, reward, new_state)
     
     # Print Q-values for the old_state right after update
@@ -236,12 +283,12 @@ for step in range(TOTAL_STEPS):
     # Record data every 100 steps
     if step % 100 == 0:
         updated_q_vals = dqn_model.predict(to_array(state), verbose=0)[0]
-        print(f"Step {step}, Current_State: {state}, Action: {action}, New_State: {new_state}, Reward: {reward:.2f}, Cumulative Reward: {cumulative_reward:.2f}, Q-values(current_state): {updated_q_vals}")
+        print(f"Step {step}, Current_State: {state}, Action: {action}, New_State: {new_state}, Reward: {reward:.2f}, Cumulative Reward: {cumulative_reward:.2f}, Q-values(current_state): {updated_q_vals}, Cumulative Waiting time : {cumulative_waitingtime_dateTime}")
         step_history.append(step)
         reward_history.append(cumulative_reward)
         queue_history.append(sum(new_state[:-1]))  # sum of queue lengths
-
-
+        cumulative_waitingtime_history.append(cumulative_waitingtime)  # sum  of lane  waiting time total to compare vs other model
+        cumulative_waitingtime_total_history.append(cumulative_waitingtime_total)  # sum  of lane  waiting time total to compare vs other model
 
 # -------------------------
 # Step 9: Close connection between SUMO and Traci
@@ -282,8 +329,18 @@ plt.show()
 plt.figure(figsize=(10, 6))
 plt.plot(step_history, cumulative_waitingtime_history, marker='o', linestyle='-', label="Total Waiting Time")
 plt.xlabel("Simulation Step")
-plt.ylabel("Total Waiting time ")
+plt.ylabel("Total Waiting time at a certain step ")
 plt.title("RL Training: Total waiting time over Steps in Deep Q Learning")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Plot Total Waiting Time over Simulation Steps
+plt.figure(figsize=(10, 6))
+plt.plot(step_history, cumulative_waitingtime_total_history, marker='o', linestyle='-', label="Total Waiting Time")
+plt.xlabel("Simulation Step")
+plt.ylabel("Total Waiting time sum in sec ")
+plt.title("RL Training: Total sum waiting time over Steps in Deep Q Learning")
 plt.legend()
 plt.grid(True)
 plt.show()
