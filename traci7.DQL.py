@@ -263,13 +263,20 @@ for step in range(TOTAL_STEPS):
     
     new_state = get_state()
     new_wt =  get_waitingTimeState()
+
+    # detect if change state just happened on last step; if so add waiting time on state the lanes that were in red will have the final waiting time, the one that were in green will count for nothing all vehicules being in movement
+    if (state[-1] != new_state[-1]):
+        # state was last state between a change of status, adding to cumulative waiting time.
+        # Add sum of waiting time for each line total for the run
+        cumulative_waitingtime_total += sum(new_wt)
+        print("trafic light just changed phase adding extra cumulative time", cumulative_waitingtime_total)
+
     reward = get_reward(new_state)
     cumulative_reward += reward
 
     # Add sum of waiting time for each line for the step
     cumulative_waitingtime = sum(new_wt)
-    # Add sum of waiting time for each line total for the run
-    cumulative_waitingtime_total += sum(new_wt)
+
 
     #print("Cumulative waiting time ", cumulative_waitingtime, " ", new_wt)
     # converting to time HH:MM:SS for display

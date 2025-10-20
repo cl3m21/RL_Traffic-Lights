@@ -234,6 +234,7 @@ def get_current_phase(tls_id): #8.Constraint 8
 step_history = []
 reward_history = []
 queue_history = []
+
 cumulative_waitingtime_history = []
 cumulative_waitingtime_total_history = []
 cumulative_waitingtime = 0.0
@@ -251,24 +252,29 @@ for step in range(TOTAL_STEPS):
     traci.simulationStep()  # Advance simulation by one step
     
     new_state = get_state()
+
+    #detect if change state just happened on last step; if so add waiting time on state the lanes that were in red will have the final waiting time, the one that were in green will count for nothing all vehicules being in movement
+    if(state[-1] != new_state[-1]):
+        #state was last state between a change of status, adding to cumulative waiting time.
+        # Add sum of waiting time for each line total for the run
+        cumulative_waitingtime_total += sum(new_state[-7:-1])
+        print("trafic light just changed phase adding extra cumulative time", cumulative_waitingtime_total)
+
     reward = get_reward(new_state)
     cumulative_reward += reward
 
     #Add sum of waiting time for each line for the step
     cumulative_waitingtime = sum(new_state[-7:-1])
     print("Cumulative waiting time " , cumulative_waitingtime , " " , new_state[-7:-1])
-    #Add sum of waiting time for each line total for the run
-    cumulative_waitingtime_total += sum(new_state[-7:-1])
+    # converting to time HH:MM:SS for display
+    cumulative_waitingtime_dateTime = str(datetime.timedelta(seconds=cumulative_waitingtime))
 
-    #converting to time HH:MM:SS for display
-    cumulative_waitingtime_dateTime =  str(datetime.timedelta(seconds=cumulative_waitingtime))
-    
     #update_Q_table(state, action, reward, new_state)
     
     # Print Q-values for the old_state right after update
     #updated_q_vals = Q_table[state]
 
-    if (step == 550):  # debug
+    if (step == 100):  # debug
         print("step 200")
 
     # Record data every 100 steps
