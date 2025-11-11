@@ -1,15 +1,48 @@
+# Script Name : SKLearn.py :
+# Author Clement AUREL Clement.aurel@capgemini.com
+# Date: November 2025
+# Scope Route 25 R&D
+# November technical tasks
+# Description : Different models are used in this script, Linear, XForest, XGBoost , Evaluation is done, study with SHAP to find most important features for the model creation...
+#
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, LogisticRegression
 import matplotlib.pyplot as plt
-#importing dataset
+
+
+###  START IMPORT DATASET ###
+##
+#
+
 df = pd.read_csv('qws1.csv', encoding = 'latin-1')
 # df.head()
+
+#Check all columns are numerical/string but not objects and convert them if any (in this case the 2 columns found will be dropped anyway, Service Name &  WSDL Address
+#df.dtype
+
+for i in df.columns:
+    if df[i].dtype == 'O':#Letter O for object not 0 (zero)
+        print(df[i])
+        df[i] = pd.Categorical(df[i])
+        df[i] = df[i].cat.codes
+
 
 #Cleaning unecessary columns
 X = df.drop(columns=['Class','Service Name', 'WSDL Address'])
 y = df['Class']
+
+
+#
+##
+### END IMPORT DATASET ###
+
+### START SPLIT DATASET ###
+##
+#
+
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 11)
 
@@ -17,7 +50,12 @@ print("Training set shape : ", X_train.shape, y_train.shape)
 
 print("Test set shape : " , X_test.shape, y_test.shape)
 
-### Linear Regression model###
+
+#
+##
+### END SPLIT DATASET ###
+
+### START LINEAR REGRESSION MODEL #####
 ##
 #
 
@@ -51,9 +89,10 @@ print(score)
 print("end linear ML")
 #
 ##
-### End Linear Regression Model
+### END LINEAR REGRESSION MODEL ###
 
-### Start Logitics Regression Model
+
+### START LOGISTIC REGRESSION MODEL ###
 ##
 #
 
@@ -93,40 +132,69 @@ print("fin")
 # all prediction classifications matches the values from the y_test value confirming our model works perfectly with Linear Regression
 #Measuring performance on test set
 
+#
+##
+### END LOGISTIC REGRESSION MODEL ###
 
-### End Logistic Regression Model
-
-### Start Random Forest Classifier ###
+### START RANDOM FOREST CLASSIFIER ###
 ##
 #
-import shap
-from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
-shap.initjs()
 
+# Data Processing
+import pandas as pd
+import numpy as np
 
-
-# Train a machine learning model
+# Modelling
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay, \
+    classification_report
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from scipy.stats import randint
+
+# Tree Visualisation
+from sklearn.tree import export_graphviz
+from IPython.display import Image
+import graphviz
+
 clf = RandomForestClassifier()
 clf.fit(X_train, y_train)
 
 # Make prediction on the testing data
 y_pred = clf.predict(X_test)
 
+#Get accuract score
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+
+
+#COMPUTE CONFUSION MATRIX
+
+conf_matrix = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix  Random Forest Classifier Model")
+print(conf_matrix)
+
 # Classification Report
+class_report = classification_report(y_pred, y_test)
 print("Classification Random Forest model")
-print(classification_report(y_pred, y_test))
+print(class_report)
+
+
 
 #
 ##
-### End Random Forest Classifier ###
+### END RANDOM FOREST CLASSIFIER ###
 
 
-#### SHAP ####
+### START SHAP INTERPRETATION  ###
 ###
 ##
 #
+
+import shap
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+shap.initjs()
+
 
 explainer = shap.Explainer(clf)
 shap_values = explainer.shap_values(X_test)
@@ -186,7 +254,7 @@ plt.close()
 #
 ##
 ###
-#### END SHAP ####
+#### END SHAP INTERPRETATION ####
 
 
 import xgboost
