@@ -3,8 +3,10 @@
 # Date: November 2025
 # Scope Route 25 R&D
 # November technical tasks
-# Description : Different models are used in this script, Linear, XForest, XGBoost , Evaluation is done, study with SHAP to find most important features for the model creation...
-#
+# Description : Different models are used in this script, Linear (doesn"t fit for the choosen mode of classification),Logistics, XForest, XGBoost , Evaluation is done, study with SHAP to find most important features for the model creation...
+#- Confusion matrix heatmap & SHAP plots are saved in current folder, as well as  classification reports for each model.
+#- Input data was cleaned from unecessary column, split in X (removed Class column but all other columns are set here) and Y (target Class only).
+# -Data was scaled with StandardScale and accuracy on Logistic Regressop, Model has climbed from 69.8 to 95.89
 
 import pandas as pd
 import numpy as np
@@ -38,6 +40,14 @@ for i in df.columns:
 X = df.drop(columns=['Class','Service Name', 'WSDL Address'],axis=1)
 y = df['Class']
 
+#Scale data
+print(X)
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+scaler.fit(X)
+X = scaler.transform(X)
+
+print(X)
 
 #
 ##
@@ -179,12 +189,30 @@ conf_matrix = confusion_matrix(y_test_encoded, y_predLog)
 print("Confusion Matrix Logistic Regression Model")
 print(conf_matrix)
 
+#Save heatmap Confusion Matrix
+sns.heatmap(conf_matrix, annot=True)
+plt.title('Confusion_Matrix_LogisticRegression')
+plt.savefig('Confusion_Matrix_Heatmap_LogisticRegression.png')
+plt.close()
+
 # Classification Report
-class_report = classification_report(y_predLog, y_test_encoded)
-print("Classification Random Forest model")
+class_report = classification_report(y_predLog, y_test_encoded, output_dict=True)
+print("Classification Logistic Regression model : ")
 print(class_report)
+dfCR = pd.DataFrame(class_report).transpose()
+
+#Saving result to excel
+dfCR.to_excel('LogisticRegressionClassificationReport.xlsx', sheet_name = 'Results')
 
 print("pause")
+
+
+
+#START SHAP INTERPRETATION  ###
+
+#No  SHAP interpretation for Linear model
+
+#### END SHAP INTERPRETATION ####
 
 #
 ##
@@ -225,20 +253,23 @@ conf_matrix = confusion_matrix(y_test_encoded, y_pred)
 print("Confusion Matrix  Random Forest Classifier Model : ")
 print(conf_matrix)
 
+#Save heatmap Confusion Matrix
+sns.heatmap(conf_matrix, annot=True)
+plt.title('Confusion_Matrix_RandomForest')
+plt.savefig('Confusion_Matrix_Heatmap_RandomForest.png')
+plt.close()
+
 # Classification Report
-class_report = classification_report(y_pred, y_test_encoded)
+class_report = classification_report(y_pred, y_test_encoded , output_dict=True)
 print("Classification Random Forest model : ")
 print(class_report)
 
-#
-##
-### END RANDOM FOREST CLASSIFIER ###
+dfCR = pd.DataFrame(class_report).transpose()
 
+#Saving result to excel
+dfCR.to_excel('RandomForestClassificationReport.xlsx', sheet_name = 'Results')
 
-### START SHAP INTERPRETATION  ###
-##
-#
-
+#START SHAP INTERPRETATION  ###
 
 import shap
 from sklearn.metrics import classification_report
@@ -248,7 +279,6 @@ shap.initjs()
 
 explainer = shap.Explainer(clf)
 shap_values = explainer.shap_values(X_test)
-#shap.summary_plot(shap_values[:,:,1], X_test,class_inds="original", class_names=clf.classes_)
 
 #Applying a small trick to be able to have the title in the plot, the title argument in the summary_plot doesn't work
 #Also the category is in reality the index +1 so we have to make the changes when printing the output to have the good class. Index 0 is Class 1, index 1 is class 2, index 2 is class 3 ,  index 3 is class 4
@@ -258,62 +288,66 @@ shap_values = explainer.shap_values(X_test)
 #CLASS 1
 #BAR PLOT
 bar_plot = shap.summary_plot(shap_values[:,:,0], X_test,plot_type="bar",show=False)
-plt.title('Class1_bar')
-plt.savefig('Class1_bar.png')
+plt.title('Class1_bar_RandomForest')
+plt.savefig('Class1_bar_RandomForest.png')
 plt.close()
 
 #HEAT POINT PLOT
 point_plot = shap.summary_plot(shap_values[:,:,0], X_test,show=False)
-plt.title('Class1_points')
-plt.savefig('Class1_points.png')
+plt.title('Class1_points_RandomForest')
+plt.savefig('Class1_points_RandomForest.png')
 plt.close()
 
 #CLASS 2
 
 #BAR PLOT
 bar_plot = shap.summary_plot(shap_values[:,:,1], X_test,plot_type="bar",show=False)
-plt.title('Class2_bar')
-plt.savefig('Class2_bar.png')
+plt.title('Class2_bar_RandomForest')
+plt.savefig('Class2_bar_RandomForest.png')
 plt.close()
 
 #HEAT POINT PLOT
 point_plot = shap.summary_plot(shap_values[:,:,1], X_test,show=False)
-plt.title('Class2_points')
-plt.savefig('Class2_points.png')
+plt.title('Class2_points_RandomForest')
+plt.savefig('Class2_points_RandomForest.png')
 plt.close()
 
 #CLASS 3
 
 #BAR PLOT
 bar_plot = shap.summary_plot(shap_values[:,:,2], X_test,plot_type="bar",show=False)
-plt.title('Class3_bar')
-plt.savefig('Class3_bar.png')
+plt.title('Class3_bar_RandomForest')
+plt.savefig('Class3_bar_RandomForest.png')
 plt.close()
 
 #HEAT POINT PLOT
 point_plot = shap.summary_plot(shap_values[:,:,2], X_test,show=False)
-plt.title('Class3_points')
-plt.savefig('Class3_points.png')
+plt.title('Class3_points_RandomForest')
+plt.savefig('Class3_points_RandomForest.png')
 plt.close()
 
 #CLASS 4
 
 #BAR PLOT
 bar_plot = shap.summary_plot(shap_values[:,:,3], X_test,plot_type="bar",show=False)
-plt.title('Class4_bar')
-plt.savefig('Class4_bar.png')
+plt.title('Class4_bar_RandomForest')
+plt.savefig('Class4_bar_RandomForest.png')
 plt.close()
 
 #HEAT POINT PLOT
 point_plot = shap.summary_plot(shap_values[:,:,1], X_test,show=False)
-plt.title('Class4_points')
-plt.savefig('Class4_points.png')
+plt.title('Class4_points_RandomForest')
+plt.savefig('Class4_points_RandomForest.png')
 plt.close()
+
+
+#### END SHAP INTERPRETATION ####
 
 #
 ##
-###
-#### END SHAP INTERPRETATION ####
+### END RANDOM FOREST CLASSIFIER ###
+
+
 
 ### XGBOOST MODEL ###
 ##
@@ -336,14 +370,107 @@ y_pred = model.predict(X_test)
 from sklearn.metrics import accuracy_score
 accuracy = accuracy_score(y_test_encoded, y_pred)
 
-print("Accuracy = ", (accuracy * 100.0 ).__round__(3), "%")
+print("Accuracy XGBoost Model : ", (accuracy * 100.0 ).__round__(3), "%")
 
 
 # CONFUSION MATRIX
 from sklearn.metrics import confusion_matrix
-conf_matrix = confusion_matrix(y_test_encoded, y_pred)
 
+#COMPUTE CONFUSION MATRIX
+conf_matrix = confusion_matrix(y_test_encoded, y_pred)
+print("Confusion Matrix  XGBoost Model : ")
+print(conf_matrix)
+
+#Save heatmap Confusion Matrix
 sns.heatmap(conf_matrix, annot=True)
+plt.title('Confusion_Matrix_XGBoost')
+plt.savefig('Confusion_Matrix_Heatmap_XGBoost.png')
+plt.close()
+
+
+# Classification Report
+class_report = classification_report(y_pred, y_test_encoded, output_dict=True)
+print("Classification XGBoost model : ")
+print(class_report)
+
+dfCR = pd.DataFrame(class_report).transpose()
+
+#Saving result to excel
+dfCR.to_excel('XGBoostReport.xlsx', sheet_name = 'Results',)
+
+#START SHAP INTERPRETATION  ###
+
+import shap
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+shap.initjs()
+
+
+explainer = shap.Explainer(clf)
+shap_values = explainer.shap_values(X_test)
+
+#Applying a small trick to be able to have the title in the plot, the title argument in the summary_plot doesn't work
+#Also the category is in reality the index +1 so we have to make the changes when printing the output to have the good class. Index 0 is Class 1, index 1 is class 2, index 2 is class 3 ,  index 3 is class 4
+
+#CREATE PLOTS
+
+#CLASS 1
+#BAR PLOT
+bar_plot = shap.summary_plot(shap_values[:,:,0], X_test,plot_type="bar",show=False)
+plt.title('Class1_bar_XGBoost')
+plt.savefig('Class1_bar_XGBoost.png')
+plt.close()
+
+#HEAT POINT PLOT
+point_plot = shap.summary_plot(shap_values[:,:,0], X_test,show=False)
+plt.title('Class1_points_XGBoost')
+plt.savefig('Class1_points_XGBoost.png')
+plt.close()
+
+#CLASS 2
+
+#BAR PLOT
+bar_plot = shap.summary_plot(shap_values[:,:,1], X_test,plot_type="bar",show=False)
+plt.title('Class2_bar_XGBoost')
+plt.savefig('Class2_bar_XGBoost.png')
+plt.close()
+
+#HEAT POINT PLOT
+point_plot = shap.summary_plot(shap_values[:,:,1], X_test,show=False)
+plt.title('Class2_points_XGBoost')
+plt.savefig('Class2_points_XGBoost.png')
+plt.close()
+
+#CLASS 3
+
+#BAR PLOT
+bar_plot = shap.summary_plot(shap_values[:,:,2], X_test,plot_type="bar",show=False)
+plt.title('Class3_bar_XGBoost')
+plt.savefig('Class3_bar_XGBoost.png')
+plt.close()
+
+#HEAT POINT PLOT
+point_plot = shap.summary_plot(shap_values[:,:,2], X_test,show=False)
+plt.title('Class3_points_XGBoost')
+plt.savefig('Class3_points_XGBoost.png')
+plt.close()
+
+#CLASS 4
+
+#BAR PLOT
+bar_plot = shap.summary_plot(shap_values[:,:,3], X_test,plot_type="bar",show=False)
+plt.title('Class4_bar_XGBoost')
+plt.savefig('Class4_bar_XGBoost.png')
+plt.close()
+
+#HEAT POINT PLOT
+point_plot = shap.summary_plot(shap_values[:,:,1], X_test,show=False)
+plt.title('Class4_points_XGBoost')
+plt.savefig('Class4_points_XGBoost.png')
+plt.close()
+
+
+#### END SHAP INTERPRETATION ####
 
 
 ###PIPELINE CREATION
