@@ -6,8 +6,8 @@
 # Description : Different models are used in this script, Linear (doesn"t fit for the choosen mode of classification),Logistics, XForest, XGBoost , Evaluation is done, study with SHAP to find most important features for the model creation...
 #- Confusion matrix heatmap & SHAP plots are saved in current folder, as well as  classification reports for each model.
 #- Input data was cleaned from unecessary column, split in X (removed Class column but all other columns are set here) and Y (target Class only).
-# -Data was scaled with StandardScale and accuracy on Logistic Regressop, Model has climbed from 69.8 to 95.89
-
+# -Data was scaled with StandardScale and accuracy on Logistic Regression, Model has climbed from 69.8 to 95.89
+import joblib
 import pandas as pd
 import numpy as np
 from numba.core.ir import Print
@@ -18,12 +18,13 @@ import xgboost
 import seaborn as sns
 
 
+
 ###  START IMPORT DATASET ###
 ##
 #
 
 df = pd.read_csv('qws1.csv', encoding = 'latin-1')
-# df.head()
+
 
 #Check all columns are numerical/string but not objects and convert them if any (in this case the 2 columns found will be dropped anyway, Service Name &  WSDL Address
 #df.dtype
@@ -40,19 +41,42 @@ for i in df.columns:
 X = df.drop(columns=['Class','Service Name', 'WSDL Address'],axis=1)
 y = df['Class']
 
-#Scale data
+
+
+
+''''
+#Scale data MOVED TO the pipeline
 print(X)
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
 scaler = StandardScaler()
 scaler.fit(X)
 X = scaler.transform(X)
 
 print(X)
-
+'''
 #
 ##
 ### END IMPORT DATASET ###
 
+#PREPROCESSING after getting this error "ValueError: Invalid classes inferred from unique values of `y`.  Expected: [0 1 2 3], got [1 2 3 4]" on XGBoost Model , might as well apply for all
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+le = LabelEncoder()
+
+y = le.fit_transform(y)
+
+#diplay mapping
+
+mapping = {cls: idx for idx, cls in enumerate(le.classes_)}
+for k,v in mapping.items():
+    print(f" Class {k}: Index {v}")
+
+
+#
+##
+### END PREPROCESSING DATA ###
 
 
 
@@ -67,25 +91,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, rando
 ##
 #
 
-#PREPROCESSING after getting this error "ValueError: Invalid classes inferred from unique values of `y`.  Expected: [0 1 2 3], got [1 2 3 4]" on XGBoost Model , might as well apply for all
+print("Training set shape : ", X_train.shape)
 
-from sklearn.preprocessing import LabelEncoder
-
-le = LabelEncoder()
-y_train_encoded = le.fit_transform(y_train)
-
-y_test_encoded = le.fit_transform(y_test)
-
-
-#
-##
-### END PREPROCESSING DATA ###
-
-print("Training set shape : ", X_train.shape, y_train_encoded.shape)
-
-print("Test set shape : " , X_test.shape, y_test_encoded.shape)
-
-
+print("Test set shape : " , X_test.shape)
 
 #
 ##
@@ -112,10 +120,10 @@ print(y_predLin)
 
 #Compare with test set results from dataset and measure performance
 #put output from test Y prediction into np array to compare them (rounding the second np to 0
-if np.array_equal(np.array(y_test_encoded), np.array(y_predLin).round(0)) == False:
+if np.array_equal(np.array(y_test), np.array(y_predLin).round(0)) == False:
     print("dont match");
     #count non zero so good result
-    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test_encoded) == np.array(y_predLin))) / np.size(np.array(y_test_encoded) == np.array(y_predLin)) * 100).round() , "%")
+    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test) == np.array(y_predLin))) / np.size(np.array(y_test) == np.array(y_predLin)) * 100).round() , "%")
 
 else:
     # match is 100%
@@ -125,39 +133,48 @@ else:
 # all prediction classifications matches the values from the y_test value confirming our model works perfectly with Linear Regression
 #Measuring performance on test set
 print("test training over the test set")
-score = regLin.score(X_test, y_test_encoded)
+score = regLin.score(X_test, y_test)
 print(score)
 print("end linear ML")
 #
 ##
 ### END LINEAR REGRESSION MODEL ###
+"""
 
-"""""
 
 ### START LOGISTIC REGRESSION MODEL ###
 ##
 #
 
-regLog = LogisticRegression()
-regLog.fit(X_train, y_train_encoded)
+### Pipeline ###
+from sklearn.pipeline import make_pipeline, Pipeline
+from sklearn import set_config
 
-y_predLog = regLog.predict(X_test)
+scaler = StandardScaler()
+regLog =  LogisticRegression()
 
-#Get SCORE
+pipeline = make_pipeline(scaler, regLog)
 
-score = regLog.score(X_test, y_test_encoded)
+#visualze pipeline
+set_config(display='diagram')
+pipeline
+pipeline.fit(X_train, y_train)
 
-print ("Logistic Regression model score : ", (score * 100).__round__(3) , "%")
 
 
+print("Score for Pipeline (Scaling StandardScaler & model logistic Regression ) : ",  (pipeline.score(X_test, y_test)*100).__round__(3) , " %" )
+pipeline.named_steps.logisticregression.coef_
+y_predLog = pipeline.predict(X_test)
 """"
+
+NOT NEEDED SCORE works fine
 #comparing tables
 
-np.array_equal(np.array(y_test_encoded), np.array(y_predLog))
+np.array_equal(np.array(y_test), np.array(y_predLog))
 
 #getting % of diff
 
-np.array(y_test_encoded) == np.array(y_predLog)
+np.array(y_test) == np.array(y_predLog)
 
 print("prediction values from model output Logistic Regression")
 print(y_predLog)
@@ -166,16 +183,16 @@ print(y_predLog)
 #then compare with test set results from dataset and measure performance
 #put output from test Y prediction into np array to compare them
 
-compare = np.array(y_test_encoded) == np.array(y_predLog)
+compare = np.array(y_test) == np.array(y_predLog)
 
-np.array_equal(np.array(y_test_encoded), np.array(y_predLog))
+np.array_equal(np.array(y_test), np.array(y_predLog))
 #dont match so model is not 100% accurate
-if np.array_equal(np.array(y_test_encoded), np.array(y_predLog)) == False:
+if np.array_equal(np.array(y_test), np.array(y_predLog)) == False:
     print("dont match");
     #count non zero so good result
-    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test_encoded) == np.array(y_predLog))) / np.size(np.array(y_test_encoded) == np.array(y_predLog)) * 100).round() , "%")
+    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test) == np.array(y_predLog))) / np.size(np.array(y_test) == np.array(y_predLog)) * 100).round() , "%")
 
-    np.size(np.array(y_test_encoded) == np.array(y_predLog))
+    np.size(np.array(y_test) == np.array(y_predLog))
 
 print("fin")
 
@@ -185,9 +202,13 @@ print("fin")
 
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay, classification_report
 
-conf_matrix = confusion_matrix(y_test_encoded, y_predLog)
+conf_matrix = confusion_matrix(y_test, y_predLog)
 print("Confusion Matrix Logistic Regression Model")
 print(conf_matrix)
+
+dfCM = pd.DataFrame(conf_matrix).transpose()
+#Saving result to csv
+dfCM.to_csv('LogisticRegressionClassificationConfusionMatrix.csv')
 
 #Save heatmap Confusion Matrix
 sns.heatmap(conf_matrix, annot=True)
@@ -195,17 +216,37 @@ plt.title('Confusion_Matrix_LogisticRegression')
 plt.savefig('Confusion_Matrix_Heatmap_LogisticRegression.png')
 plt.close()
 
+
+
 # Classification Report
-class_report = classification_report(y_predLog, y_test_encoded, output_dict=True)
+class_report = classification_report(y_predLog, y_test, output_dict=True)
 print("Classification Logistic Regression model : ")
 print(class_report)
 dfCR = pd.DataFrame(class_report).transpose()
 
-#Saving result to excel
-dfCR.to_excel('LogisticRegressionClassificationReport.xlsx', sheet_name = 'Results')
+#Saving result to csv
+dfCR.to_csv('LogisticRegressionClassificationReport.csv')
 
 print("pause")
 
+### SAVE MODEL WITH Joblib ###
+import joblib
+
+filename = 'LogisticRegressionFullPipeline.joblib'
+joblib.dump(pipeline,open(filename, 'wb'))
+
+#LOAD MODEL WITH JOBLIB ###
+loaded_model = joblib.load(open(filename, 'rb'))
+
+
+#TEST PREDICTION WITH IMPORTED MODEL
+y_pred_LM = loaded_model.predict(X_test)
+
+#Check accuracy score matched the exported one
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score(y_test, y_pred_LM)
+
+print("Score for Logistic Regression model after export / import ) : ",  (accuracy*100).__round__(3) , " %" )
 
 
 #START SHAP INTERPRETATION  ###
@@ -237,21 +278,35 @@ from sklearn.tree import export_graphviz
 from IPython.display import Image
 import graphviz
 
-clf = RandomForestClassifier()
-clf.fit(X_train, y_train_encoded)
+
+### Pipeline ###
+from sklearn.pipeline import make_pipeline, Pipeline
+
+scaler = StandardScaler()
+clf =  RandomForestClassifier()
+
+pipeline = make_pipeline(scaler, clf)
+
+pipeline.fit(X_train, y_train)
+
+print("Score for Pipeline (Scaling StandardScaler & model RandomForest ) : ",  (pipeline.score(X_test, y_test)*100).__round__(3) , " %" )
 
 # Make prediction on the testing data
-y_pred = clf.predict(X_test)
+y_pred = pipeline.predict(X_test)
 
 #Get accuracy score
-score = accuracy_score(y_test_encoded, y_pred)
+score = accuracy_score(y_test, y_pred)
 
 print ("Random Forest Classification model score : ", (score * 100).__round__(3) , "%")
 
 #COMPUTE CONFUSION MATRIX
-conf_matrix = confusion_matrix(y_test_encoded, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
 print("Confusion Matrix  Random Forest Classifier Model : ")
 print(conf_matrix)
+
+dfCM = pd.DataFrame(conf_matrix).transpose()
+#Saving result to csv
+dfCR.to_csv('RandomForestClassificationConfusionMatrix.csv')
 
 #Save heatmap Confusion Matrix
 sns.heatmap(conf_matrix, annot=True)
@@ -260,14 +315,14 @@ plt.savefig('Confusion_Matrix_Heatmap_RandomForest.png')
 plt.close()
 
 # Classification Report
-class_report = classification_report(y_pred, y_test_encoded , output_dict=True)
+class_report = classification_report(y_pred, y_test , output_dict=True)
 print("Classification Random Forest model : ")
 print(class_report)
 
 dfCR = pd.DataFrame(class_report).transpose()
 
-#Saving result to excel
-dfCR.to_excel('RandomForestClassificationReport.xlsx', sheet_name = 'Results')
+#Saving result to csv
+dfCR.to_csv('RandomForestClassificationReport.csv')
 
 #START SHAP INTERPRETATION  ###
 
@@ -343,6 +398,25 @@ plt.close()
 
 #### END SHAP INTERPRETATION ####
 
+### SAVE MODEL WITH Joblib ###
+import joblib
+
+filename = 'RandomForestClassificationFullpipeline.joblib'
+joblib.dump(pipeline,open(filename, 'wb'))
+
+#LOAD MODEL WITH JOBLIB ###
+loaded_model = joblib.load(open(filename, 'rb'))
+
+
+#TEST PREDICTION WITH IMPORTED MODEL
+y_pred_LM = loaded_model.predict(X_test)
+
+#Check accuracy score matched the exported one
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score(y_test, y_pred_LM)
+
+print("Score for Random Forest model after export / import ) : ",  (accuracy*100).__round__(3) , " %" )
+
 #
 ##
 ### END RANDOM FOREST CLASSIFIER ###
@@ -359,7 +433,7 @@ import shap
 
 # Fit XGBoost model
 model = xgboost.XGBClassifier()
-model.fit(X_train, y_train_encoded)
+model.fit(X_train, y_train)
 
 #Predicting the Test set resuls
 
@@ -368,7 +442,7 @@ y_pred = model.predict(X_test)
 #Evaluate the classifier on the test data
 
 from sklearn.metrics import accuracy_score
-accuracy = accuracy_score(y_test_encoded, y_pred)
+accuracy = accuracy_score(y_test, y_pred)
 
 print("Accuracy XGBoost Model : ", (accuracy * 100.0 ).__round__(3), "%")
 
@@ -377,9 +451,14 @@ print("Accuracy XGBoost Model : ", (accuracy * 100.0 ).__round__(3), "%")
 from sklearn.metrics import confusion_matrix
 
 #COMPUTE CONFUSION MATRIX
-conf_matrix = confusion_matrix(y_test_encoded, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
 print("Confusion Matrix  XGBoost Model : ")
 print(conf_matrix)
+
+dfCM = pd.DataFrame(conf_matrix).transpose()
+#Saving result to csv
+dfCR.to_csv('XGBoostConfusionMatrix.csv')
+
 
 #Save heatmap Confusion Matrix
 sns.heatmap(conf_matrix, annot=True)
@@ -389,14 +468,14 @@ plt.close()
 
 
 # Classification Report
-class_report = classification_report(y_pred, y_test_encoded, output_dict=True)
+class_report = classification_report(y_pred, y_test, output_dict=True)
 print("Classification XGBoost model : ")
 print(class_report)
 
 dfCR = pd.DataFrame(class_report).transpose()
 
-#Saving result to excel
-dfCR.to_excel('XGBoostReport.xlsx', sheet_name = 'Results',)
+#Saving result to csv
+dfCR.to_csv('XGBoostReport.csv')
 
 #START SHAP INTERPRETATION  ###
 
@@ -473,7 +552,26 @@ plt.close()
 #### END SHAP INTERPRETATION ####
 
 
-###PIPELINE CREATION
 
-#from sklearn.pipeline import make_pipeline
+### SAVE MODEL WITH Joblib ###
+import joblib
 
+filename = 'XGBOOSTFullpipeline.joblib'
+joblib.dump(pipeline,open(filename, 'wb'))
+
+#LOAD MODEL WITH JOBLIB ###
+loaded_model = joblib.load(open(filename, 'rb'))
+
+
+#TEST PREDICTION WITH IMPORTED MODEL
+y_pred_LM = loaded_model.predict(X_test)
+
+#Check accuracy score matched the exported one
+from sklearn.metrics import accuracy_score
+accuracy = accuracy_score(y_test, y_pred_LM)
+
+print("Score for XBoost model after export / import ) : ",  (accuracy*100).__round__(3) , " %" )
+
+#
+##
+### END XGBOOST ###
