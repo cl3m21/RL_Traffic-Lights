@@ -3,10 +3,12 @@
 # Date: November 2025
 # Scope Route 25 R&D
 # November technical tasks
-# Description : Different models are used in this script, Linear (doesn"t fit for the choosen mode of classification),Logistics, XForest, XGBoost , Evaluation is done, study with SHAP to find most important features for the model creation...
+# Description : Different models are used in this script, Linear (doesn"t fit for the choosen mode of classification),Logistics, XForest, XGBoost , Evaluation is done, study with SHAP(for RandomForest and XBOOST Only) to find most important features for the model creation...
 #- Confusion matrix heatmap & SHAP plots are saved in current folder, as well as  classification reports for each model.
 #- Input data was cleaned from unecessary column, split in X (removed Class column but all other columns are set here) and Y (target Class only).
-# -Data was scaled with StandardScale and accuracy on Logistic Regression, Model has climbed from 69.8 to 95.89
+# -Data was scaled with StandardScale and accuracy on Logistic Regression, Model has climbed from 69.8 to 95.89.
+# -Pipeline is used to concat transformation and also to export the full pipeline that includes Scaler and Model
+
 import joblib
 import pandas as pd
 import numpy as np
@@ -99,48 +101,6 @@ print("Test set shape : " , X_test.shape)
 ##
 ### END SPLIT DATASET ###
 
-""""
-### START LINEAR REGRESSION MODEL #####
-##
-#
-
-
-#This model doesn't fit our needs since we are looking into classification, this model will return non integer numbers and must be used for other purposes (finding exact values instead of classification)
-
-
-regLin = LinearRegression(fit_intercept = True)
-
-#Train the model on training set X_train & y_train
-regLin.fit(X_train, y_train)
-
-# predict on test set with model based on features , target being the classification value
-y_predLin = regLin.predict(X_test)
-print("prediction values from model output Linear Regression")
-print(y_predLin)
-
-#Compare with test set results from dataset and measure performance
-#put output from test Y prediction into np array to compare them (rounding the second np to 0
-if np.array_equal(np.array(y_test), np.array(y_predLin).round(0)) == False:
-    print("dont match");
-    #count non zero so good result
-    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test) == np.array(y_predLin))) / np.size(np.array(y_test) == np.array(y_predLin)) * 100).round() , "%")
-
-else:
-    # match is 100%
-    print("Percentage of match of the model vs the dataset results is 100% ")
-
-
-# all prediction classifications matches the values from the y_test value confirming our model works perfectly with Linear Regression
-#Measuring performance on test set
-print("test training over the test set")
-score = regLin.score(X_test, y_test)
-print(score)
-print("end linear ML")
-#
-##
-### END LINEAR REGRESSION MODEL ###
-"""
-
 
 ### START LOGISTIC REGRESSION MODEL ###
 ##
@@ -148,55 +108,16 @@ print("end linear ML")
 
 ### Pipeline ###
 from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn import set_config
-
 scaler = StandardScaler()
 regLog =  LogisticRegression()
 
 pipeline = make_pipeline(scaler, regLog)
-
-#visualze pipeline
-set_config(display='diagram')
-pipeline
 pipeline.fit(X_train, y_train)
-
-
 
 print("Score for Pipeline (Scaling StandardScaler & model logistic Regression ) : ",  (pipeline.score(X_test, y_test)*100).__round__(3) , " %" )
 pipeline.named_steps.logisticregression.coef_
 y_predLog = pipeline.predict(X_test)
-""""
 
-NOT NEEDED SCORE works fine
-#comparing tables
-
-np.array_equal(np.array(y_test), np.array(y_predLog))
-
-#getting % of diff
-
-np.array(y_test) == np.array(y_predLog)
-
-print("prediction values from model output Logistic Regression")
-print(y_predLog)
-
-
-#then compare with test set results from dataset and measure performance
-#put output from test Y prediction into np array to compare them
-
-compare = np.array(y_test) == np.array(y_predLog)
-
-np.array_equal(np.array(y_test), np.array(y_predLog))
-#dont match so model is not 100% accurate
-if np.array_equal(np.array(y_test), np.array(y_predLog)) == False:
-    print("dont match");
-    #count non zero so good result
-    print("Percentage of match of the model vs the dataset results ", ((np.count_nonzero(np.array(y_test) == np.array(y_predLog))) / np.size(np.array(y_test) == np.array(y_predLog)) * 100).round() , "%")
-
-    np.size(np.array(y_test) == np.array(y_predLog))
-
-print("fin")
-
-"""
 
 # START COMPUTE CONFUSION MATRIX
 
@@ -430,14 +351,20 @@ print("Score for Random Forest model after export / import ) : ",  (accuracy*100
 import xgboost
 import shap
 
+### Pipeline ###
+from sklearn.pipeline import make_pipeline, Pipeline
+
+scaler = StandardScaler()
+clfXG =  xgboost.XGBClassifier()
+
+pipeline = make_pipeline(scaler, clfXG)
 
 # Fit XGBoost model
-model = xgboost.XGBClassifier()
-model.fit(X_train, y_train)
 
+pipeline.fit(X_train, y_train)
 #Predicting the Test set resuls
 
-y_pred = model.predict(X_test)
+y_pred = pipeline.predict(X_test)
 
 #Evaluate the classifier on the test data
 
@@ -485,7 +412,10 @@ from sklearn.model_selection import train_test_split
 shap.initjs()
 
 
-explainer = shap.Explainer(clf)
+explainer = shap.Explainer(clfXG)
+shap_values = explainer.shap_values(X_test)
+
+""""
 shap_values = explainer.shap_values(X_test)
 
 #Applying a small trick to be able to have the title in the plot, the title argument in the summary_plot doesn't work
@@ -575,3 +505,4 @@ print("Score for XBoost model after export / import ) : ",  (accuracy*100).__rou
 #
 ##
 ### END XGBOOST ###
+"""" "
